@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AI 链路检测</title>
+<style>
+  :root{--bg:#0b0d12;--card:#151a23;--line:#242b3a;--txt:#e9eef8;--dim:#8b97ab;
+        --ok:#34d399;--warn:#fbbf24;--bad:#f87171;--cy:#22d3ee}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;padding:18px 14px 40px;background:var(--bg);color:var(--txt);
+       font:15px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       max-width:620px;margin-inline:auto}
+  .head{text-align:center;margin-bottom:18px}
+  .head h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.6px;color:var(--dim)}
+
+  .hero{border-radius:18px;padding:26px 20px;text-align:center;margin-bottom:14px;
+        border:1px solid var(--line);background:var(--card);transition:background .3s,border-color .3s}
+  .hero.ok{background:linear-gradient(160deg,#0f2b22,#141c25);border-color:#1e5c46}
+  .hero.warn{background:linear-gradient(160deg,#2e2610,#1d1a12);border-color:#6b5416}
+  .hero.bad{background:linear-gradient(160deg,#2e1414,#1e1313);border-color:#6b2222}
+  .icon{font-size:44px;line-height:1;margin-bottom:8px}
+  #status{font-size:21px;font-weight:700;letter-spacing:.4px;margin-bottom:6px}
+  #reason{font-size:13.5px;color:var(--dim);line-height:1.6;padding:0 4px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+        padding:4px 16px;margin-bottom:12px}
+  .item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+        padding:13px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .item .l{min-width:0}
+  .item .n{font-size:14.5px;font-weight:500}
+  .item .d{font-size:12px;color:var(--dim);margin-top:2px;word-break:break-all}
+  .st{font-size:13px;font-weight:700;white-space:nowrap;padding:4px 10px;border-radius:8px}
+  .st.ok{color:var(--ok);background:rgba(52,211,153,.12)}
+  .st.bad{color:var(--bad);background:rgba(248,113,113,.12)}
+  .st.wait{color:var(--dim);background:rgba(139,151,171,.12)}
+
+  .crit{font-size:12px;color:var(--dim);line-height:1.75;padding:0 4px 6px}
+  .crit b{color:var(--cy);font-weight:600}
+  button{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);
+         background:#1c2331;color:var(--txt);font:600 15px/1 system-ui,sans-serif;
+         cursor:pointer;margin-top:4px}
+  button:active{background:#27303f}
+  button:disabled{opacity:.5}
+  .foot{text-align:center;color:#5c6678;font-size:11.5px;margin-top:16px;line-height:1.7}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+        border-top-color:var(--cy);border-radius:50%;animation:r .7s linear infinite;vertical-align:-2px}
+  @keyframes r{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="head"><h1>AI 链路检测</h1></div>
+
+<div class="hero" id="hero">
+  <div class="icon" id="icon">⏳</div>
+  <div id="status">检测中</div>
+  <div id="reason">正在向 Anthropic 查询它看到的你的 IP…</div>
+</div>
+
+<div class="card">
+  <div class="item">
+    <div class="l"><div class="n">Anthropic 看到的 IP</div><div class="d" id="d-ip">—</div></div>
+    <div class="st wait" id="s-ip">—</div>
+  </div>
+  <div class="item">
+    <div class="l"><div class="n">Claude 网页</div><div class="d">claude.ai</div></div>
+    <div class="st wait" id="s-claude">—</div>
+  </div>
+  <div class="item">
+    <div class="l"><div class="n">Gemini 网页</div><div class="d">gemini.google.com</div></div>
+    <div class="st wait" id="s-gemini">—</div>
+  </div>
+  <div class="item">
+    <div class="l"><div class="n">Gemini 接口</div><div class="d">generativelanguage.googleapis.com</div></div>
+    <div class="st wait" id="s-gapi">—</div>
+  </div>
+  <div class="item">
+    <div class="l"><div class="n">Google 账号</div><div class="d">accounts.google.com</div></div>
+    <div class="st wait" id="s-gacct">—</div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px 16px">
+  <div class="crit">
+    <b>判定条件</b>：只认一个数字——Anthropic 服务器返回的客户端 IP 是否为你家住宅出口。<br>
+    是 → 链路正确，Claude 和 Gemini 都在芝加哥落地。<br>
+    否 → 页面能开，但暴露的是别的 IP，属异地登录风险。<br>
+    取不到 → 代理没工作，两个都用不了。<br>
+    <span style="color:#5c6678">本页含你的住宅出口 IP，截图外发前请打码。</span>
+  </div>
+</div>
+
+<button id="again">重新检测</button>
+
+<div class="foot">
+  <span id="ts">—</span><br>
+  检测由本机浏览器发起，反映你此刻的真实网络
+</div>
+
+<script>
+const HOME_IP = '69.33.18.171';   // 芝加哥住宅出口
+
+const $ = id => document.getElementById(id);
+let report = [];
+
+function setSt(id, ok, text){
+  const el = $(id);
+  el.className = 'st ' + (ok === null ? 'wait' : ok ? 'ok' : 'bad');
+  el.textContent = text || (ok === null ? '…' : ok ? '能' : '不能');
+}
+
+function withTimeout(ms){
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  return {signal: ac.signal, done: () => clearTimeout(t)};
+}
+
+async function getTrace(){
+  const c = withTimeout(12000);
+  try{
+    const r = await fetch('https://claude.ai/cdn-cgi/trace?t=' + Date.now(),
+                          {cache:'no-store', signal: c.signal});
+    const txt = await r.text();
+    const o = {};
+    txt.split('\n').forEach(line => {
+      const i = line.indexOf('=');
+      if (i > 0) o[line.slice(0, i)] = line.slice(i + 1);
+    });
+    return o;
+  } finally { c.done(); }
+}
+
+async function reach(url){
+  const c = withTimeout(12000);
+  try{
+    await fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(),
+                {mode:'no-cors', cache:'no-store', signal: c.signal});
+    return true;
+  } catch(e){ return false; }
+  finally { c.done(); }
+}
+
+function hero(cls, icon, status, reason){
+  $('hero').className = 'hero ' + cls;
+  $('icon').textContent = icon;
+  $('status').textContent = status;
+  $('reason').textContent = reason;
+}
+
+async function run(){
+  $('again').disabled = true;
+  hero('', '⏳', '检测中', '正在询问 Anthropic 它看到的你的 IP…');
+  ['s-ip','s-claude','s-gemini','s-gapi','s-gacct'].forEach(id => setSt(id, null, '…'));
+  $('d-ip').textContent = '—';
+  report = [];
+  const t0 = new Date();
+
+  // 四项连通性并行发出
+  const jobs = {
+    claude: reach('https://claude.ai/'),
+    gemini: reach('https://gemini.google.com/'),
+    gapi:   reach('https://generativelanguage.googleapis.com/'),
+    gacct:  reach('https://accounts.google.com/generate_204'),
+  };
+
+  // 核心判据
+  let tr = null;
+  try { tr = await getTrace(); } catch(e) {}
+
+  const ip = tr && tr.ip ? tr.ip : null;
+  const colo = tr && tr.colo ? tr.colo : '';
+
+  if (ip){
+    const match = ip === HOME_IP;
+    $('d-ip').textContent = ip + (colo ? '　·　边缘 ' + colo : '');
+    setSt('s-ip', match, match ? '芝加哥住宅' : '非住宅');
+    report.push('Anthropic 看到 IP: ' + ip + (colo ? ' (' + colo + ')' : '') + (match ? ' [住宅 ✓]' : ' [非住宅 ✗]'));
+  } else {
+    $('d-ip').textContent = '取不到（请求失败）';
+    setSt('s-ip', false, '失败');
+    report.push('Anthropic 看到 IP: 取不到');
+  }
+
+  const res = {};
+  for (const k of Object.keys(jobs)) res[k] = await jobs[k];
+
+  setSt('s-claude', res.claude);
+  setSt('s-gemini', res.gemini);
+  setSt('s-gapi',   res.gapi);
+  setSt('s-gacct',  res.gacct);
+  report.push('Claude 网页: ' + (res.claude ? '能连' : '不能连'));
+  report.push('Gemini 网页: ' + (res.gemini ? '能连' : '不能连'));
+  report.push('Gemini 接口: ' + (res.gapi ? '能连' : '不能连'));
+  report.push('Google 账号: ' + (res.gacct ? '能连' : '不能连'));
+
+  const aiDown = !res.claude || !res.gemini;
+
+  if (!ip){
+    hero('bad', '❌', '代理没工作',
+         '连 claude.ai 都到不了，Claude 和 Gemini 现在都用不了。先检查代理是否已连接。');
+  } else if (ip !== HOME_IP){
+    hero('warn', '⚠️', '走错了线路',
+         'Claude 能连，但 Anthropic 看到的是 ' + ip + '，不是你家住宅出口。这样用会触发异地登录风控。');
+  } else if (aiDown){
+    hero('warn', '⚠️', '住宅正常，但有服务连不上',
+         '出口 IP 正确（芝加哥住宅），但' +
+         (!res.claude ? ' Claude' : '') + (!res.gemini ? ' Gemini' : '') +
+         ' 连不上。稍后重试，或检查对应规则。');
+  } else {
+    hero('ok', '✅', '一切正常',
+         'Anthropic 看到的正是你家住宅 IP，Claude 与 Gemini 均可连接。可以放心使用。');
+  }
+
+  $('ts').textContent = t0.toLocaleString('zh-CN', {hour12:false});
+  $('again').disabled = false;
+}
+
+$('again').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>
