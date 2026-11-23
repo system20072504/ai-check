@@ -188,16 +188,18 @@ async function run(){
   const res = {};
   for (const k of Object.keys(jobs)) res[k] = await jobs[k];
 
-  setSt('s-claude', res.claude);
+  // trace 能取到本身就是 claude.ai 可达的确证（200 + CORS），优先采信
+  const claudeOK = !!ip || res.claude;
+  setSt('s-claude', claudeOK);
   setSt('s-gemini', res.gemini);
   setSt('s-gapi',   res.gapi);
   setSt('s-gacct',  res.gacct);
-  report.push('Claude 网页: ' + (res.claude ? '能连' : '不能连'));
+  report.push('Claude 网页: ' + (claudeOK ? '能连' : '不能连'));
   report.push('Gemini 网页: ' + (res.gemini ? '能连' : '不能连'));
   report.push('Gemini 接口: ' + (res.gapi ? '能连' : '不能连'));
   report.push('Google 账号: ' + (res.gacct ? '能连' : '不能连'));
 
-  const aiDown = !res.claude || !res.gemini;
+  const aiDown = !claudeOK || !res.gemini;
 
   if (!ip){
     hero('bad', '❌', '代理没工作',
@@ -208,7 +210,7 @@ async function run(){
   } else if (aiDown){
     hero('warn', '⚠️', '住宅正常，但有服务连不上',
          '出口 IP 正确（芝加哥住宅），但' +
-         (!res.claude ? ' Claude' : '') + (!res.gemini ? ' Gemini' : '') +
+         (!claudeOK ? ' Claude' : '') + (!res.gemini ? ' Gemini' : '') +
          ' 连不上。稍后重试，或检查对应规则。');
   } else {
     hero('ok', '✅', '一切正常',
